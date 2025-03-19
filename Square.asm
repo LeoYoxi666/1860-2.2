@@ -1,27 +1,43 @@
-// Square.asm
+// Load x from R0
 @R0
-D=M      // D = x
-@R1
-M=0      // R1 = 0 (初始化 y=0)
-@R2
-M=D      // R2 = x (循环计数器)
+D=M
 
-(LOOP)
-@R2
+// Store x in TEMP_X to avoid modifying R0
+@TEMP_X
+M=D  
+
+// Initialize result y = 0 in R1
+@R1
+M=0  
+
+// If x == 0, result is 0, so jump to END
+@CHECK_ZERO
+D;JEQ  
+
+// Set up loop counter (x times)
+@TEMP_X
+D=M
+@LOOP
+M=D  
+
+// Square calculation: y += x, repeated x times
+(SQUARE_LOOP)
+@LOOP
 D=M
 @END
-D;JEQ    // 如果 R2 == 0，结束循环
+D;JEQ  // If counter is 0, stop
 
-@R0
-D=M      // D = x
 @R1
-M=M+D    // y += x
+D=M
+@TEMP_X
+D=D+M  // y = y + x
+@R1
+M=D  // Store new y
 
-@R2
-M=M-1    // R2 -= 1
+// Decrement loop counter
 @LOOP
-0;JMP    // 继续循环
+M=M-1
+@SQUARE_LOOP
+0;JMP  // Repeat loop
 
 (END)
-@END
-0;JMP    // 结束程序
