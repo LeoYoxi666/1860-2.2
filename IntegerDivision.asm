@@ -19,8 +19,8 @@ M=0         // Initialize quotient m (R2) to 0
 @R3
 M=D         // Initialize remainder q (R3) to x
 
-@SIGN
-D;JLT       // If x is negative, jump to SIGN
+@SIGN_CHECK
+D;JLT       // If x is negative, jump to SIGN_CHECK
 
 (LOOP)
 @R3
@@ -48,11 +48,8 @@ D=M         // Load the value of R0 (x) into D register
 @R3
 D=M         // Load the value of R3 (remainder q) into D register
 
-@R0
-D=D&M       // Check if x and q have the same sign
-
-@SET_FLAG
-D;JGE       // If signs are the same, jump to SET_FLAG
+@SAME_SIGN
+D;JGE       // If q has the same sign as x, jump to SAME_SIGN
 
 @R1
 D=M         // Load the value of R1 (y) into D register
@@ -63,7 +60,7 @@ M=M+D       // Adjust remainder q to have the same sign as x
 @R2
 M=M-1       // Adjust quotient m accordingly
 
-(SET_FLAG)
+(SAME_SIGN)
 @R4
 M=0         // Set flag R4 to 0 (division is valid)
 
@@ -74,11 +71,10 @@ M=0         // Set flag R4 to 0 (division is valid)
 @R4
 M=1         // Set flag R4 to 1 (division is invalid)
 
-(END)
 @END
-0;JMP       // Infinite loop to end the program
+0;JMP       // Jump to END
 
-(SIGN)
+(SIGN_CHECK)
 @R0
 D=M         // Load the value of R0 (x) into D register
 
@@ -87,3 +83,7 @@ M=-D        // Initialize remainder q to -x
 
 @LOOP
 0;JMP       // Jump to LOOP
+
+(END)
+@END
+0;JMP       // Infinite loop to end the program
