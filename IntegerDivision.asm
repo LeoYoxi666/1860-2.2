@@ -1,89 +1,136 @@
-// IntegerDivision.asm
-// Compute the integer quotient and remainder of x / y
-// x is stored in R0, y is stored in R1
-// Quotient m is stored in R2, remainder q is stored in R3
-// R4 is a flag: 1 if division is invalid, 0 otherwise
-
 @R1
-D=M         // Load the value of R1 (y) into D register
-
-@INVALID
-D;JEQ       // If y == 0, jump to INVALID (division by zero is invalid)
+D=M
+@DIVIDE_BY_ZERO
+D;JEQ
 
 @R0
-D=M         // Load the value of R0 (x) into D register
+D=M
+@R5
+M=0
+@SKIP_R0_NEG
+D;JGE
+@R5
+M=1
+(SKIP_R0_NEG)
+@R0
+D=M
+@ABS_R0
+M=D
+@SKIP_R0_ABS
+D;JGE
+@ABS_R0
+M=-D
+(SKIP_R0_ABS)
 
-@R2
-M=0         // Initialize quotient m (R2) to 0
+@R1
+D=M
+@R6
+M=0
+@SKIP_R1_NEG
+D;JGE
+@R6
+M=1
+(SKIP_R1_NEG)
+@R1
+D=M
+@ABS_R1
+M=D
+@SKIP_R1_ABS
+D;JGE
+@ABS_R1
+M=-D
+(SKIP_R1_ABS)
 
+@ABS_R0
+D=M
+@32768
+D=D-A
+@CHECK_OVERFLOW
+D;JEQ
+@START_DIVISION
+0;JMP
+
+(CHECK_OVERFLOW)
+@ABS_R1
+D=M
+@1
+D=D-A
+@OVERFLOW_ERROR
+D;JEQ
+
+(START_DIVISION)
+@ABS_R0
+D=M
 @R3
-M=D         // Initialize remainder q (R3) to x
-
-@SIGN_CHECK
-D;JLT       // If x is negative, jump to SIGN_CHECK
+M=D
+@R2
+M=0
 
 (LOOP)
+@ABS_R1
+D=M
 @R3
-D=M         // Load the value of R3 (remainder q) into D register
-
-@R1
-D=D-M       // Subtract y from q
-
+D=M-D
 @END_LOOP
-D;JLT       // If q < y, jump to END_LOOP
-
-@R2
-M=M+1       // Increment quotient m by 1
-
+D;JLT
+@ABS_R1
+D=M
 @R3
-M=D         // Update remainder q
-
+M=M-D
+@R2
+M=M+1
 @LOOP
-0;JMP       // Repeat the loop
+0;JMP
+
 
 (END_LOOP)
-@R0
-D=M         // Load the value of R0 (x) into D register
+@R5
+D=M
+@R6
+D=D-M
+@SET_NEGATIVE_QUOTIENT
+D;JNE
+@SET_REMAINDER_SIGN
+0;JMP
 
-@R3
-D=M         // Load the value of R3 (remainder q) into D register
-
-@SAME_SIGN
-D;JGE       // If q has the same sign as x, jump to SAME_SIGN
-
-@R1
-D=M         // Load the value of R1 (y) into D register
-
-@R3
-M=M+D       // Adjust remainder q to have the same sign as x
-
+(SET_NEGATIVE_QUOTIENT)
 @R2
-M=M-1       // Adjust quotient m accordingly
+M=-M
 
-(SAME_SIGN)
-@R4
-M=0         // Set flag R4 to 0 (division is valid)
-
-@END
-0;JMP       // Jump to END
-
-(INVALID)
-@R4
-M=1         // Set flag R4 to 1 (division is invalid)
-
-@END
-0;JMP       // Jump to END
-
-(SIGN_CHECK)
-@R0
-D=M         // Load the value of R0 (x) into D register
-
+(SET_REMAINDER_SIGN)
+@R5
+D=M
+@SKIP_REMAINDER_NEG
+D;JEQ
 @R3
-M=-D        // Initialize remainder q to -x
+M=-M
 
-@LOOP
-0;JMP       // Jump to LOOP
+(SKIP_REMAINDER_NEG)
+@R4
+M=0
+@END
+0;JMP
+
+(DIVIDE_BY_ZERO)
+@R2
+M=0
+@R3
+M=0
+@R4
+M=1
+@END
+0;JMP
+
+(OVERFLOW_ERROR)
+@R2
+M=0
+@R3
+M=0
+@R4
+M=1
+@END
+0;JMP
 
 (END)
 @END
-0;JMP       // Infinite loop to end the program
+0;JMP
