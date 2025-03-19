@@ -1,39 +1,27 @@
 // Square.asm
-// 计算 y = x^2, x 存在 R0，y 存在 R1
-
-@R1
-M=0        // R1 (y) 初始化为 0
 @R0
-D=M        // D = x
-@IS_ZERO
-D;JEQ      // 如果 x == 0，直接结束
-
-@R2
-M=D        // R2 = x (作为计数器)
-@LOOP
-D=M        // D = 计数器值
-@END
-D;JEQ      // 如果计数器归零，结束
-
+D=M      // D = x
 @R1
+M=0      // R1 = 0 (初始化 y=0)
+@R2
+M=D      // R2 = x (循环计数器)
+
+(LOOP)
+@R2
 D=M
+@END
+D;JEQ    // 如果 R2 == 0，结束循环
+
 @R0
-D=D+M      // D = y + x
+D=M      // D = x
 @R1
-M=D        // 更新 y = y + x
+M=M+D    // y += x
 
 @R2
-M=M-1      // 计数器--
+M=M-1    // R2 -= 1
 @LOOP
-0;JMP      // 继续循环
-
-(IS_ZERO)
-@R1
-M=0        // x = 0 时，y 也设为 0
-@END
-0;JMP
+0;JMP    // 继续循环
 
 (END)
 @END
-0;JMP
-
+0;JMP    // 结束程序
