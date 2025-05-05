@@ -1,47 +1,47 @@
 // SumEvenIntegers.asm
-// Computes the sum of the first n even numbers: 0 + 2 + 4 + ... + 2n
-// R0: input n
-// R1: output sum
-// R2: loop counter (i)
+// Computes z = sum_{i=0}^n (2 * i)
+// Input n in R0, result z in R1
+// If n < 0 → R1 = -1; if overflow → R1 = -2
 
 @R0
-D=M             // Load input n
+D=M
 @NEGATIVE
-D;JLT           // If n < 0, go to error handler
+D;JLT        // If n < 0, go to NEGATIVE
 
 @R1
-M=0             // Initialize sum R1 = 0
-
+M=0          // Initialize sum in R1 to 0
 @R2
-M=0             // Initialize loop counter i = 0
+M=0          // i = 0
 
 (LOOP)
 @R2
-D=M             // D = i
+D=M
 @R0
 D=D-M
-@END
-D;JGT           // If i > n, we're done
+@DONE
+D;GT         // if i > n, end loop
 
 @R2
-D=M             // D = i
-D=D+D           // D = 2 * i
-
+D=M
+D=D+D        // D = 2 * i
 @R1
-M=M+D           // R1 = R1 + 2*i
+M=D+M        // Add 2*i to sum
 
 @R2
-M=M+1           // i++
-
+M=M+1        // i++
 @LOOP
-0;JMP           // Repeat loop
+0;JMP
+
+(DONE)
+@END
+0;JMP
 
 (NEGATIVE)
 @R1
-M=-1            // If n < 0, store -1 as error result
+M=-1
 @END
 0;JMP
 
 (END)
 @END
-0;JMP           // Infinite loop to halt execution
+0;JMP
