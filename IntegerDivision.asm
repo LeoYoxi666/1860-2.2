@@ -1,158 +1,131 @@
-// Check if R1 (divisor) == 0
+// Check if divisor is zero
 @R1
 D=M
-@INVALID_DIVISION // If y == 0, jump to invalid division handler
-D;JEQ
+@BAD_DIV
+D;JEQ          // Jump if R1 == 0 (invalid)
 
-// ----- Compute absolute value of x (R0) -----
+// Set valid division flag to 0 (default)
+@R4
+M=0
+
+// Save inputs x = R0, y = R1
 @R0
-D=M         // D = x
-@temp_x
-M=D         // Save original x to temp_x
-@x_abs
-M=D         // Assume x is positive
-@X_POS
-D;JGE       // If x >= 0, skip negation
-@x_abs
-M=-M        // If x < 0, negate it: x_abs = -x
-(X_POS)
-
-// ----- Compute absolute value of y (R1) -----
+D=M
+@R5           // R5 = x
+M=D
 @R1
-D=M         // D = y
-@temp_y
-M=D         // Save original y to temp_y
-@y_abs
-M=D         // Assume y is positive
-@Y_POS
-D;JGE       // If y >= 0, skip negation
-@y_abs
-M=-M        // If y < 0, negate it: y_abs = -y
-(Y_POS)
-
-// ----- Initialize remainder and unsigned quotient -----
-@x_abs
-D=M         // D = |x|
-@rem
-M=D         // rem = |x|
-@m_unsigned
-M=0         // m_unsigned = 0 (initialize quotient)
-
-// ----- Perform unsigned division: while rem >= y_abs -----
-(LOOP_DIV)
-@rem
 D=M
-@y_abs
+@R6           // R6 = y
+M=D
+
+// ----- Determine if we need to negate quotient -----
+
+// Initialize negate_quotient = false
+@R7
+M=0           // R7 = 0 means result stays positive
+
+// Check if x < 0
+@R5
+D=M
+@X_NEG
+D;JLT
+@CHECK_Y
+0;JMP
+(X_NEG)
+@R5
+M=-M          // x = -x (make positive)
+@R7
+M=M+1         // Toggle negate_quotient = 1
+(CHECK_Y)
+
+// Check if y < 0
+@R6
+D=M
+@Y_NEG
+D;JLT
+@PREP_DIV
+0;JMP
+(Y_NEG)
+@R6
+M=-M          // y = -y
+@R7
+M=M+1         // Toggle again
+
+// At this point, if R7 == 1, quotient should be negative
+(PREP_DIV)
+
+// Save original x sign for remainder correction
+@R0
+D=M
+@R8
+M=0
+D;JLT
+@SKIP_NEG_REM
+@R8
+M=1          // R8 = 1 if original x was negative
+(SKIP_NEG_REM)
+
+// ----- Division via loop subtraction -----
+@R5
+D=M
+@R9
+M=0          // R9 = quotient
+(DIV_LOOP2)
+@R5
+D=M
+@R6
 D=D-M
-@END_LOOP_DIV
-D;JLT       // If rem < y_abs, exit loop
-
-// rem = rem - y_abs
-@y_abs
-D=M
-@rem
-M=M-D
-
-// m_unsigned = m_unsigned + 1
-@m_unsigned
-M=M+1
-
-@LOOP_DIV
-0;JMP       // Repeat loop
-(END_LOOP_DIV)
-
-// ----- Determine sign of x -----
-@temp_x
-D=M
-@SIGN_X_NEGATIVE
-D;JLT       // If x < 0, jump
-@sign_x
-M=1         // x >= 0 → sign_x = +1
-@CHECK_SIGN_Y
+@DONE_DIV
+D;JLT         // if x < y, exit
+@R5
+M=M-D         // x -= y
+@R9
+M=M+1         // quotient++
+@DIV_LOOP2
 0;JMP
-(SIGN_X_NEGATIVE)
-@sign_x
-M=-1        // x < 0 → sign_x = -1
+(DONE_DIV)
 
-// ----- Determine sign of y -----
-(CHECK_SIGN_Y)
-@temp_y
+// ----- Write quotient to R2 -----
+@R7
 D=M
-@SIGN_Y_NEGATIVE
-D;JLT       // If y < 0, jump
-@sign_y
-M=1         // y >= 0 → sign_y = +1
-@COMPARE_SIGNS
-0;JMP
-(SIGN_Y_NEGATIVE)
-@sign_y
-M=-1        // y < 0 → sign_y = -1
-
-// ----- Compare signs to determine sign of quotient -----
-(COMPARE_SIGNS)
-@sign_x
-D=M
-@sign_y
-D=D-M       // D = sign_x - sign_y
-@SAME_SIGNS
-D;JEQ       // If same, m is positive
-@sign_m
-M=-1        // Opposite signs → quotient is negative
-@ADJUST_M
-0;JMP
-(SAME_SIGNS)
-@sign_m
-M=1         // Same signs → quotient is positive
-
-// ----- Apply sign to m (quotient) -----
-(ADJUST_M)
-@sign_m
-D=M
-@ADJUST_M_NEG
-D;JLT       // If sign_m < 0 → negate quotient
-@m_unsigned
+@NEGATE_Q
+D;JEQ
+@R9
 D=M
 @R2
-M=D         // Store m = +m_unsigned
-@ADJUST_Q
+M=-D         // Quotient is negative
+@REM_CORR
 0;JMP
-(ADJUST_M_NEG)
-@m_unsigned
+(NEGATE_Q)
+@R9
 D=M
 @R2
-M=-D        // Store m = -m_unsigned
+M=D          // Quotient is positive
 
-// ----- Apply sign of x to q (remainder) -----
-(ADJUST_Q)
-@sign_x
+// ----- Correct sign of remainder -----
+(REM_CORR)
+@R5
 D=M
-@ADJUST_Q_NEG
-D;JLT       // If x < 0, negate remainder
-@rem
-D=M
+@R8
+D=D
+@KEEP_POS
 @R3
-M=D         // q = +remainder
-@SET_R4
+M=D
+@R8
+D=M
+@END
+D;JEQ
+@R3
+M=-M
+(KEEP_POS)
+
+// ----- Done -----
+@END
 0;JMP
-(ADJUST_Q_NEG)
-@rem
-D=M
-@R3
-M=-D        // q = -remainder
 
-// ----- Set valid division flag: R4 = 0 -----
-(SET_R4)
+// ----- Handle divide by zero -----
+(BAD_DIV)
 @R4
-M=0         // Valid division
-
+M=1
 @END
-0;JMP       // End program
-
-// ----- Handle division by zero -----
-(INVALID_DIVISION)
-@R4
-M=1         // Set invalid division flag
-
-(END)
-@END
-0;JMP       // Infinite loop to end program
+0;JMP
