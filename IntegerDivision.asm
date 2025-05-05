@@ -1,156 +1,158 @@
-// IntegerDivision.asm
-
-// Check if divisor (R1) is zero
+// Check if R1 (divisor) == 0
 @R1
 D=M
-@INVALID_DIVISION    // Jump to invalid division handling if divisor is zero
+@INVALID_DIVISION // If y == 0, jump to invalid division handler
 D;JEQ
 
-// Compute absolute value of x (R0)
+// ----- Compute absolute value of x (R0) -----
 @R0
-D=M
-@temp_x             // Store original x value temporarily
-M=D
-@x_abs              // Store absolute value of x
-M=D
-@X_POS              // Skip negation if x is non-negative
-D;JGE
+D=M         // D = x
+@temp_x
+M=D         // Save original x to temp_x
 @x_abs
-M=-M                // Take absolute value if x is negative
+M=D         // Assume x is positive
+@X_POS
+D;JGE       // If x >= 0, skip negation
+@x_abs
+M=-M        // If x < 0, negate it: x_abs = -x
 (X_POS)
 
-// Compute absolute value of y (R1)
+// ----- Compute absolute value of y (R1) -----
 @R1
-D=M
-@temp_y             // Store original y value temporarily
-M=D
-@y_abs              // Store absolute value of y
-M=D
-@Y_POS              // Skip negation if y is non-negative
-D;JGE
+D=M         // D = y
+@temp_y
+M=D         // Save original y to temp_y
 @y_abs
-M=-M                // Take absolute value if y is negative
+M=D         // Assume y is positive
+@Y_POS
+D;JGE       // If y >= 0, skip negation
+@y_abs
+M=-M        // If y < 0, negate it: y_abs = -y
 (Y_POS)
 
-// Initialize remainder (rem) and unsigned quotient (m_unsigned)
+// ----- Initialize remainder and unsigned quotient -----
 @x_abs
-D=M
-@rem                // Initialize remainder with |x|
-M=D
-@m_unsigned         // Initialize quotient to 0
-M=0
+D=M         // D = |x|
+@rem
+M=D         // rem = |x|
+@m_unsigned
+M=0         // m_unsigned = 0 (initialize quotient)
 
-// Perform unsigned division via repeated subtraction
+// ----- Perform unsigned division: while rem >= y_abs -----
 (LOOP_DIV)
 @rem
 D=M
 @y_abs
-D=D-M               // Subtract |y| from remainder
-@END_LOOP_DIV       // Exit loop if remainder < |y|
-D;JLT
+D=D-M
+@END_LOOP_DIV
+D;JLT       // If rem < y_abs, exit loop
 
+// rem = rem - y_abs
 @y_abs
 D=M
 @rem
-M=M-D               // Update remainder
+M=M-D
+
+// m_unsigned = m_unsigned + 1
 @m_unsigned
-M=M+1               // Increment quotient
+M=M+1
+
 @LOOP_DIV
-0;JMP               // Continue loop
+0;JMP       // Repeat loop
 (END_LOOP_DIV)
 
-// Determine the sign of x
+// ----- Determine sign of x -----
 @temp_x
 D=M
-@SIGN_X_NEGATIVE    // Jump if x is negative
-D;JLT
+@SIGN_X_NEGATIVE
+D;JLT       // If x < 0, jump
 @sign_x
-M=1                 // x is positive, sign = 1
+M=1         // x >= 0 → sign_x = +1
 @CHECK_SIGN_Y
 0;JMP
 (SIGN_X_NEGATIVE)
 @sign_x
-M=-1                // x is negative, sign = -1
+M=-1        // x < 0 → sign_x = -1
 
-// Determine the sign of y
+// ----- Determine sign of y -----
 (CHECK_SIGN_Y)
 @temp_y
 D=M
-@SIGN_Y_NEGATIVE    // Jump if y is negative
-D;JLT
+@SIGN_Y_NEGATIVE
+D;JLT       // If y < 0, jump
 @sign_y
-M=1                 // y is positive, sign = 1
+M=1         // y >= 0 → sign_y = +1
 @COMPARE_SIGNS
 0;JMP
 (SIGN_Y_NEGATIVE)
 @sign_y
-M=-1                // y is negative, sign = -1
+M=-1        // y < 0 → sign_y = -1
 
-// Compare signs to determine the quotient's final sign
+// ----- Compare signs to determine sign of quotient -----
 (COMPARE_SIGNS)
 @sign_x
 D=M
 @sign_y
-D=D-M               // Check if signs are the same
-@SAME_SIGNS         // Jump if signs match
-D;JEQ
+D=D-M       // D = sign_x - sign_y
+@SAME_SIGNS
+D;JEQ       // If same, m is positive
 @sign_m
-M=-1                // Signs differ, quotient is negative
+M=-1        // Opposite signs → quotient is negative
 @ADJUST_M
 0;JMP
 (SAME_SIGNS)
 @sign_m
-M=1                 // Signs match, quotient is positive
+M=1         // Same signs → quotient is positive
 
-// Adjust quotient's sign and store in R2
+// ----- Apply sign to m (quotient) -----
 (ADJUST_M)
 @sign_m
 D=M
-@ADJUST_M_NEG       // Jump if quotient should be negative
-D;JLT
+@ADJUST_M_NEG
+D;JLT       // If sign_m < 0 → negate quotient
 @m_unsigned
 D=M
 @R2
-M=D                 // Store positive quotient in R2
+M=D         // Store m = +m_unsigned
 @ADJUST_Q
 0;JMP
 (ADJUST_M_NEG)
 @m_unsigned
 D=M
 @R2
-M=-D                // Store negative quotient in R2
+M=-D        // Store m = -m_unsigned
 
-// Adjust remainder's sign to match x and store in R3
+// ----- Apply sign of x to q (remainder) -----
 (ADJUST_Q)
 @sign_x
 D=M
-@ADJUST_Q_NEG       // Jump if x was negative
-D;JLT
+@ADJUST_Q_NEG
+D;JLT       // If x < 0, negate remainder
 @rem
 D=M
 @R3
-M=D                 // Store positive remainder in R3
+M=D         // q = +remainder
 @SET_R4
 0;JMP
 (ADJUST_Q_NEG)
 @rem
 D=M
 @R3
-M=-D                // Store negative remainder in R3
+M=-D        // q = -remainder
 
-// Set valid division flag (R4=0)
+// ----- Set valid division flag: R4 = 0 -----
 (SET_R4)
 @R4
-M=0                 // Division is valid
-@END
-0;JMP
+M=0         // Valid division
 
-// Handle invalid division (divisor is zero)
+@END
+0;JMP       // End program
+
+// ----- Handle division by zero -----
 (INVALID_DIVISION)
 @R4
-M=1                 // Set flag to 1 for invalid division
+M=1         // Set invalid division flag
 
-// Program termination
 (END)
 @END
-0;JMP               // Infinite loop to halt execution
+0;JMP       // Infinite loop to end program
