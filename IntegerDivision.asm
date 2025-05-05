@@ -1,153 +1,153 @@
 // IntegerDivision.asm
-// Computes signed integer division: x ÷ y = q with remainder r
-// Inputs:
-//   R0 = x (dividend, signed)
-//   R1 = y (divisor, signed)
-// Outputs:
-//   R2 = q (quotient, signed)
-//   R3 = r (remainder, same sign as x)
-//   R4 = 1 if invalid (division by 0 or overflow), 0 otherwise
-// Internal usage:
-//   R5 = sign of x (1 if negative, 0 if positive)
-//   R6 = sign of y (1 if negative, 0 if positive)
-//   R7 = abs(x)
-//   R8 = abs(y)
-//   R9 = remainder during division
-
-// ==== Check for divide-by-zero ====
 @R1
-D=M             // Load y (divisor)
-@DIV_BY_ZERO
-D;JEQ           // If y == 0, jump to error handler
+D=M
+@INVALID_DIVISION
+D;JEQ
 
-// ==== Take absolute value of x, and record sign in R5 ====
+// Compute absolute value of x (R0)
 @R0
-D=M             // Load x
-@R5
-M=0             // Assume x is non-negative (sign = 0)
-@X_POSITIVE
-D;JGE           // If x >= 0, skip negation
-@R5
-M=1             // Set sign bit: x is negative
-D=-D            // Take abs(x)
-(X_POSITIVE)
-@R7
-M=D             // Store abs(x) in R7
-
-// ==== Take absolute value of y, and record sign in R6 ====
-@R1
-D=M             // Load y
-@R6
-M=0             // Assume y is non-negative
-@Y_POSITIVE
+D=M
+@temp_x
+M=D
+@x_abs
+M=D
+@X_POS
 D;JGE
-@R6
-M=1             // Set sign bit: y is negative
-D=-D            // Take abs(y)
-(Y_POSITIVE)
-@R8
-M=D             // Store abs(y) in R8
+@x_abs
+M=-M
+(X_POS)
 
-// ==== Handle special overflow case: x = -32768, y = -1 ====
-@R7
+// Compute absolute value of y (R1)
+@R1
 D=M
-@32768
-D=D-A           // Check if abs(x) == 32768
-@NO_OVERFLOW
-D;JNE
-@R8
-D=M
-@1
-D=D-A           // Check if abs(y) == 1
-@NO_OVERFLOW
-D;JNE
-@OVERFLOW_ERR   // If both hold, overflow
-0;JMP
+@temp_y
+M=D
+@y_abs
+M=D
+@Y_POS
+D;JGE
+@y_abs
+M=-M
+(Y_POS)
 
-(NO_OVERFLOW)
-// ==== Initialize quotient and remainder ====
-@R7
+// Initialize remainder and unsigned quotient
+@x_abs
 D=M
-@R9
-M=D             // R9 = abs(x) = remainder
+@rem
+M=D
+@m_unsigned
+M=0
 
-@R2
-M=0             // R2 = 0, quotient starts from 0
-
-// ==== Division loop: subtract abs(y) from abs(x) until remainder < abs(y) ====
-(DIV_LOOP)
-@R9
+// Perform unsigned division
+(LOOP_DIV)
+@rem
 D=M
-@R8
+@y_abs
 D=D-M
-@DIV_DONE
-D;JLT           // If remainder < abs(y), done
+@END_LOOP_DIV
+D;JLT
 
-@R9
-M=M-D           // remainder -= abs(y)
-@R2
-M=M+1           // quotient += 1
-@DIV_LOOP
+@y_abs
+D=M
+@rem
+M=M-D
+@m_unsigned
+M=M+1
+@LOOP_DIV
 0;JMP
+(END_LOOP_DIV)
 
-// ==== Post-processing: restore signs ====
-(DIV_DONE)
-
-// ---- Fix quotient sign if x and y had different signs ----
-@R5
+// Determine sign of x
+@temp_x
 D=M
-@R6
-D=D-M           // Compare signs
-@SKIP_Q_SIGN
-D;JEQ           // If signs match, skip negation
+@SIGN_X_NEGATIVE
+D;JLT
+@sign_x
+M=1
+@CHECK_SIGN_Y
+0;JMP
+(SIGN_X_NEGATIVE)
+@sign_x
+M=-1
 
+// Determine sign of y
+(CHECK_SIGN_Y)
+@temp_y
+D=M
+@SIGN_Y_NEGATIVE
+D;JLT
+@sign_y
+M=1
+@COMPARE_SIGNS
+0;JMP
+(SIGN_Y_NEGATIVE)
+@sign_y
+M=-1
+
+// Compare signs to determine quotient's sign
+(COMPARE_SIGNS)
+@sign_x
+D=M
+@sign_y
+D=D-M
+@SAME_SIGNS
+D;JEQ
+@sign_m
+M=-1
+@ADJUST_M
+0;JMP
+(SAME_SIGNS)
+@sign_m
+M=1
+
+// Adjust quotient based on sign_m
+(ADJUST_M)
+@sign_m
+D=M
+@ADJUST_M_NEG
+D;JLT
+@m_unsigned
+D=M
 @R2
-M=-M            // Negate quotient
-(SKIP_Q_SIGN)
-
-// ---- Fix remainder sign to match x ----
-@R5
+M=D
+@ADJUST_Q
+0;JMP
+(ADJUST_M_NEG)
+@m_unsigned
 D=M
-@SKIP_R_SIGN
-D;JEQ           // If x was positive, no need to negate
-@R9
-M=-M            // Negate remainder
-(SKIP_R_SIGN)
+@R2
+M=-D
 
-@R9
+// Adjust remainder based on sign_x
+(ADJUST_Q)
+@sign_x
+D=M
+@ADJUST_Q_NEG
+D;JLT
+@rem
 D=M
 @R3
-M=D             // Store remainder in R3
+M=D
+@SET_R4
+0;JMP
+(ADJUST_Q_NEG)
+@rem
+D=M
+@R3
+M=-D
 
+// Set valid division flag
+(SET_R4)
 @R4
-M=0             // Valid division (no error)
-
+M=0
 @END
 0;JMP
 
-// ==== Divide-by-zero error handler ====
-(DIV_BY_ZERO)
-@R2
-M=0             // Set quotient to 0
-@R3
-M=0             // Set remainder to 0
+// Handle division by zero
+(INVALID_DIVISION)
 @R4
-M=1             // Set error flag
-@END
-0;JMP
+M=1
 
-// ==== Overflow error handler ====
-(OVERFLOW_ERR)
-@R2
-M=0             // Set quotient to 0
-@R3
-M=0             // Set remainder to 0
-@R4
-M=1             // Set error flag
-@END
-0;JMP
-
-// ==== End of program ====
 (END)
 @END
-0;JMP           // Infinite loop to halt
+0;JMP
