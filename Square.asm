@@ -1,56 +1,65 @@
 // Square.asm
-// 计算 y = x²，x 存储在 R0 中，结果存储在 R1 中
+// Computes y = x * x
+// Input: x in R0
+// Output: y in R1
+// Do not modify R0
+// Handles both positive and negative x
 
 @R0
-D=M
+D=M             // Load x
 @NEGATIVE
-D;JLT        // 如果 x < 0，跳转到负数处理
+D;JLT           // If x < 0, go to NEGATIVE
 
+// Case: x >= 0
 @R0
 D=M
 @R2
-M=D          // R2 = x (非负数时直接使用)
+M=D             // R2 = x (loop counter)
 @R1
-M=0          // 初始化结果 R1 = 0
+M=0             // R1 = 0 (initialize result)
 
-(LOOP)
+(POS_LOOP)
 @R2
 D=M
 @END
-D;JEQ        // 如果计数器 R2 == 0，结束循环
+D;JEQ           // If counter == 0, we're done
 
 @R0
-D=M          // 累加原始值 x（非负数分支）
+D=M             // Load x again
 @R1
-M=D+M        // R1 += x
+M=M+D           // R1 += x
+
 @R2
-M=M-1        // 计数器 R2 -= 1
-@LOOP
+M=M-1           // Decrement counter
+@POS_LOOP
 0;JMP
 
 (NEGATIVE)
+// Case: x < 0 → use absolute value
 @R0
 D=M
+D=-D            // D = |x|
 @R2
-M=-D         // R2 = |x| (负数取绝对值)
+M=D             // R2 = |x| (loop counter)
 @R1
-M=0          // 初始化结果 R1 = 0
+M=0             // R1 = 0 (initialize result)
 
-(LOOP_NEG)
+(NEG_LOOP)
 @R2
 D=M
 @END
-D;JEQ        // 如果计数器 R2 == 0，结束循环
+D;JEQ           // If counter == 0, we're done
 
 @R2
-D=M          // 累加绝对值 |x|
+D=M             // D = |x|
 @R1
-M=D+M        // R1 += |x|
+M=M+D           // R1 += |x|
+
 @R2
-M=M-1        // 计数器 R2 -= 1
-@LOOP_NEG
+M=M-1           // Decrement counter
+@NEG_LOOP
 0;JMP
 
 (END)
 @END
-0;JMP        // 程序终止
+0;JMP           // Infinite loop to end program

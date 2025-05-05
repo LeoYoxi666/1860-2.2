@@ -1,41 +1,63 @@
-// SumArrayEntries.asm
-@R1
-D=M
-@ZERO_RESULT
-D;JLE    // 如果 R1 <= 0，跳转到 ZERO_RESULT
+// SumArrayEntries.asm (Alternate Style)
+// Sums all entries in an array
+// Inputs:
+//   R0 = base address of array
+//   R1 = number of entries to sum
+// Output:
+//   R2 = total sum of array entries
+// Internals:
+//   R3 = current address pointer
+//   R4 = remaining counter
 
-@R2
-M=0      // 结果初始化为 0
-@R3
-M=0      // 计数器 i = 0
-
-(LOOP)
-@R3
-D=M
 @R1
-D=D-M
-@END
-D;JGE    // 如果 i >= R1，结束
+D=M             // Load number of entries
+@INVALID_INPUT
+D;JLE           // If count <= 0, go to set result = 0
+
+// ---- Initialization ----
 
 @R0
 D=M
 @R3
-A=D+M    // 访问数组的 R3 索引位置
+M=D             // R3 = base address (array pointer)
+
+@R1
 D=M
+@R4
+M=D             // R4 = number of entries remaining
+
 @R2
-M=M+D    // 累加到 R2
+M=0             // R2 = 0 (initialize sum)
+
+// ---- Loop: while R4 > 0 ----
+
+(SUM_LOOP)
+@R4
+D=M
+@FINISH
+D;JEQ           // If no more entries, end
 
 @R3
-M=M+1    // i++
-@LOOP
-0;JMP    // 继续循环
+A=M             // A = current array address
+D=M             // D = *R3 = current array value
 
-(ZERO_RESULT)
 @R2
-M=0
-@END
-0;JMP
+M=M+D           // R2 += value at current address
 
-(END)
-@END
-0;JMP
+@R3
+M=M+1           // Move pointer to next address
+
+@R4
+M=M-1           // Decrease remaining counter
+
+@SUM_LOOP
+0;JMP           // Repeat loop
+
+// ---- Handle invalid or empty input ----
+(INVALID_INPUT)
+@R2
+M=0             // If input count invalid, result is 0
+
+(FINISH)
+@FINISH
+0;JMP           // Halt program
